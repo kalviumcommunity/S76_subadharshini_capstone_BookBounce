@@ -1,8 +1,9 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
-const User = require('../models/userSchema');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
 
 router.post(
   '/signup',
@@ -157,7 +158,13 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ success: false, message: 'Invalid password' });
     }
-    res.json({ success: true, message: 'Login successful' });
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Lax',
+    });
+    res.json({ success: true, message: 'Login successful', token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
