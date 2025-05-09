@@ -148,8 +148,18 @@ router.post(
 );
 
 router.post('/login', async (req, res) => {
-  const { username,email, password } = req.body;
+  const { username, email, password } = req.body;
+
+  // Validate the input fields
+  if (!email && !username) {
+    return res.status(400).json({ success: false, message: 'Email or username is required' });
+  }
+  if (!password) {
+    return res.status(400).json({ success: false, message: 'Password is required' });
+  }
+
   try {
+    // Find user by email or username
     const user = await User.findOne({
       $or: [{ email }, { username }],
     });
@@ -157,25 +167,32 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    if (!user.isVerified) {
-      return res.status(400).json({ success: false, message: 'User not verified' });
-    }
+  
+
+    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ success: false, message: 'Invalid password' });
     }
+
+    // Generate JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+    // Set cookie
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'Lax',
     });
+
+    // Send success response
     res.json({ success: true, message: 'Login successful', token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
+
 
 router.put('/forget-password', async(req,res)=>{
   const {email,newPassword} = req.body;
